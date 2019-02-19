@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "mp3Pictures": {
+      "commandName": "Project",
+      "commandLineArgs": "-d D:\\downloads\\musica\\2ipod\\ -p 400"
+    }
+  }
+}
