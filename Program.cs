@@ -14,11 +14,13 @@ namespace mp3Pictures
 			var directory = Environment.CurrentDirectory;
 			var mask = "*.mp3";
 			var maxPixels = 0;
+			var minPixels = 0;
 
 			var options = new OptionSet {
 				{ "d|dir=", "directory to check files, current dir by default", _ => directory = _ },
 				{ "m|mask=", "file mask", _ => mask = _ },
-				{ "p|maxPixel=", "max image size in pixels", (int _) => maxPixels = _ },
+				{ "maxP=", "max image size in pixels", (int _) => maxPixels = _ },
+				{ "minP=", "min image size in pixels", (int _) => minPixels = _ },
 			};
 
 			try
@@ -31,7 +33,7 @@ namespace mp3Pictures
 				Console.WriteLine("Try `mp3Pictures --help' for more information.");
 				return -1;
 			}
-
+			directory = Environment.ExpandEnvironmentVariables(directory);
 			if (!Directory.Exists(directory))
 			{
 				Console.WriteLine($"no directory was found {directory}");
@@ -40,23 +42,27 @@ namespace mp3Pictures
 
 			var files = Directory.EnumerateFiles(directory, mask, SearchOption.AllDirectories);
 
-			var report = new Action<string, string>((_, m) => Console.WriteLine("{0} {1}", _.Substring(directory.Length - 1), m));
+			var report = new Action<string, string>((_, m) => Console.WriteLine("{0} [{1}]", _.Substring(directory.Length), m));
 
 			foreach (var f in files)
 			{
 				var file = TagLib.File.Create(f);
+				var tagPictures = file.Tag.Pictures;
+				var frontCovers = tagPictures?.Where(_ => _.Type == PictureType.FrontCover);
 
-				if (file.Tag.Pictures?.Length == 0)
+				if (tagPictures == null || !frontCovers.Any())
 					report(f, null);
 				else
-					if (maxPixels > 0)
+					if (maxPixels + minPixels > 0)
 				{
-					var pict = file.Tag.Pictures.FirstOrDefault(_ => _.Type == TagLib.PictureType.FrontCover);
+					var pict = frontCovers.FirstOrDefault();
 					using (var ms = new MemoryStream(pict.Data.Data))
 					using (var image = new Bitmap(ms))
 					{
 						if (image.Height > maxPixels || image.Width > maxPixels)
 							report(f, "frontCover too large");
+						if (image.Height < minPixels || image.Width < minPixels)
+							report(f, "frontCover too small");
 					}
 				}
 
